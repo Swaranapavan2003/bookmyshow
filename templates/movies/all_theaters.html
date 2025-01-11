@@ -1,0 +1,149 @@
+{% extends "users/basic.html" %} 
+{% load static %}
+{% block content %}
+
+<!-- Basic header section from basic.html will automatically be included here -->
+
+<style>
+  h1 {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 42px;
+      font-weight: bold;
+      color: #2c3e50;
+      text-transform: uppercase;
+  }
+
+  .container {
+      width: 90%;
+      max-width: 1200px;
+      margin: 30px auto;
+     
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+      overflow: hidden;
+  }
+
+  .theater {
+      margin-bottom: 50px;
+  }
+
+  .theater-name {
+      font-weight: bold;
+      font-size: 28px;
+      color: #e74c3c;
+      margin-bottom: 15px;
+      border-bottom: 3px solid #e74c3c;
+      padding-bottom: 5px;
+  }
+
+  .movie-section {
+      margin-top: 20px;
+  }
+
+  table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+  }
+
+  th, td {
+      padding: 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+  }
+
+  th {
+      background-color: #34495e;
+      color: #fff;
+      font-size: 20px;
+      font-weight: bold;
+  }
+
+  td {
+      font-size: 18px;
+      color: #34495e;
+  }
+
+  .movie-image {
+      width: 90px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .no-image {
+      color: #bdc3c7;
+      font-style: italic;
+  }
+
+  .separator {
+      border-top: 2px dashed #ddd;
+      margin-top: 30px;
+      padding-top: 15px;
+  }
+
+  .separator h3 {
+      text-align: center;
+      color: #2980b9;
+      font-size: 24px;
+      text-transform: uppercase;
+  }
+
+  .movie-row:hover {
+      background-color: #ecf0f1;
+  }
+</style>
+
+<div class="container">
+    {% for theater, data in theater_data.items %}
+        <div class="theater">
+          <div class="theater-name">
+            <strong>{{ theater }}</strong>
+          </div>
+            
+            <div class="movie-section">
+              
+             
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Movie Name</th>
+                            <th>Image</th>
+                            <th>Show Timings</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for movie, timings in data.movies.items %}
+                            <tr>
+                                <td class="movie-name">
+                                    {{ movie }}
+                                </td>
+                                <td>
+                                    {% if data.image %}
+                                    <p>{{ data.image }}</p>
+                                        <img src="{% static 'images' %}{{ data.image }}" alt="{{ movie }}" class="movie-image">
+                                    {% else %}
+                                        <span class="no-image">No image available</span>
+                                    {% endif %}
+                                </td>
+                                <td class="timings">
+                                    {% for time in timings %}
+                                        {{ time }}<br>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="separator">
+                <h3>More Movies Coming Soon</h3>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

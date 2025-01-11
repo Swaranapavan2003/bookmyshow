@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        .countdown {
+            font-size: 2rem;
+            color: red;
+        }
+        .button-container {
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            margin: 10px;
+            cursor: pointer;
+        }
+        button.pay {
+            background-color: green;
+            color: white;
+            border: none;
+        }
+        button.cancel {
+            background-color: red;
+            color: white;
+            border: none;
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const countdownElement = document.getElementById("countdown");
+            const countdownEnd = new Date("{{ countdown_end|date:'c' }}").getTime();
+            const cancelButton = document.querySelector('button[name="cancel"]');
+    
+            const timer = setInterval(function () {
+                const now = new Date().getTime();
+                const distance = countdownEnd - now;
+    
+                const minutes = Math.floor(distance / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+    
+                countdownElement.innerHTML = `${minutes}m ${seconds}s`;
+    
+                if (distance < 0) {
+                    clearInterval(timer);
+                    alert("Time expired! Canceling the payment.");
+                    cancelButton.click(); // Trigger the cancel button click
+                }
+            }, 1000);
+        });
+    </script>
+    
+</head>
+<body>
+    <h1>Payment Page</h1>
+    <p>Please complete your payment within the next:</p>
+    <div class="countdown" id="countdown"></div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="button-container">
+            <button type="submit" name="pay" class="pay">Pay{{ seat_no }}</button>
+            <button type="submit" name="cancel" class="cancel">Cancel</button>
+        </div>
+    </form>
+
+    <script>
+        // Handle form submission logic to prevent premature submission
+        const payButton = document.querySelector('button[name="pay"]');
+        const cancelButton = document.querySelector('button[name="cancel"]');
+        
+        payButton.addEventListener('click', function (event) {
+            // Additional logic for payment submission (e.g., validation, AJAX request)
+            console.log("Payment button clicked");
+        });
+        
+        cancelButton.addEventListener('click', function (event) {
+            // Additional logic for cancellation (e.g., redirect or other actions)
+            console.log("Cancel button clicked");
+        });
+    </script>
+
+</body>
+</html>
