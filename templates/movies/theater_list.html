@@ -197,7 +197,8 @@
       <!-- Show Times Section (Side by Side) -->
       <div class="show-times">
           <div class="time-box">
-              {{ theater.time }}
+              <!--{{ theater.time }}-->
+              {{ theater.time|date:"d/m/Y H:i:s" }}
               <a href="{% url 'book_seats' theater.name theater.time %}">
                   <span>Book Now</span>
               </a>
