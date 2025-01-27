@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect ,get_object_or_404
+"""from django.shortcuts import render, redirect ,get_object_or_404
 from .models import Movie,Theater,Seat,Booking
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
@@ -12,7 +12,8 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.utils.timezone import now
 from datetime import timedelta
-
+#
+from django.utils.timezone import make_naive
 
 
 def movie_list(request):
@@ -222,4 +223,179 @@ def unique_theater_movies(request):
         # Increment the rowspan for this theater based on the number of movies
         theater_data[theater.name]['rowspan'] = len(theater_data[theater.name]['movies'])
 
+    return render(request, 'movies/all_theaters.html', {'theater_data': theater_data})"""
+
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Movie, Theater, Seat, Booking
+from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError
+import ast
+from django.utils import timezone
+from datetime import datetime
+from urllib.parse import unquote, quote
+from django.db import transaction
+from django.contrib import messages
+from django.utils.timezone import make_naive, localtime
+
+def movie_list(request):
+    search_query = request.GET.get('search')
+    if search_query:
+        movies = Movie.objects.filter(name__icontains=search_query)
+    else:
+        movies = Movie.objects.all()
+    return render(request, 'movies/movie_list.html', {'movies': movies})
+
+def theater_list(request, name):
+    movie = get_object_or_404(Movie, name=name)
+    theaters = Theater.objects.filter(movie=movie)
+    print("theater", theaters)
+    for theater in theaters:
+        if isinstance(theater.time, datetime):
+            # Convert to 'dd/mm/yyyy hh:mm:ss' format
+            naive_time = make_naive(theater.time)
+            local_time = localtime(naive_time)
+            formatted_timestamp = local_time.strftime('%d/%m/%Y %H:%M:%S')
+        else:
+            # If theater.time is a string, parse it into a datetime object
+            timestamp = datetime.strptime(theater.time, '%Y-%m-%d %H:%M:%S%z')
+            naive_time = make_naive(timestamp)
+            local_time = localtime(naive_time)
+            formatted_timestamp = local_time.strftime('%d/%m/%Y %H:%M:%S')
+
+        theater.time = formatted_timestamp
+    return render(request, 'movies/theater_list.html', {'movie': movie, 'theaters': theaters})
+
+@login_required(login_url='/login/')
+def book_seats(request, theater_id, time):
+    timestamp = datetime.strptime(time, '%d/%m/%Y %H:%M:%S')
+    theaters = get_object_or_404(Theater, name=theater_id, time=timestamp)
+    print("theaters", theaters)
+    seats = Seat.objects.filter(theater=theaters)
+    print("seats", seats)
+    if request.method == 'POST':
+        selected_Seats = request.POST.getlist('seats')
+        with transaction.atomic():
+            error_seats = []
+            if not selected_Seats:
+                return render(request, "movies/seat_selection.html", {'theater': theaters, "seats": seats, 'error': "No seat selected"})
+            for seat_id in selected_Seats:
+                print(seat_id)
+                seat = get_object_or_404(Seat, id=seat_id, theater=theaters)
+                if seat.is_booked or seat.payment:
+                    error_seats.append(seat.seat_number)
+                    continue
+                try:
+                    seat.is_booked = True
+                    seat.payment = False
+                    seat.save()
+                except IntegrityError:
+                    error_seats.append(seat.seat_number)
+        if error_seats:
+            return render(request, 'movies/seat_selection.html', {'theater': theaters, "seats": seats, 'error': "No seat selected"})
+        seatss = ""
+        for i in selected_Seats:
+            seatss = seatss + i + "-"
+            print("i", i, "type i", type(i), "seatss", seatss)
+        return redirect('payment_method', theater_id=theater_id, time=time, seat_no=seatss)
+
+    return render(request, 'movies/seat_selection.html', {'theaters': theaters, "seats": seats})
+
+@login_required(login_url='/login/')
+def payment_method(request, theater_id, time, seat_no):
+    seat_no = seat_no.split("-")
+    seat_no = [item for item in seat_no if item != '']  # Remove empty strings
+    int_list = [int(item) for item in seat_no if item.isdigit()]  # Convert to integers
+
+    try:
+        timestamp = datetime.strptime(time, '%d/%m/%Y %H:%M:%S')
+    except ValueError:
+        messages.error(request, 'Invalid time format.')
+        return redirect('movies:seat_selection')
+
+    time_obj = datetime.strptime(time, '%d/%m/%Y %H:%M:%S')
+    countdown_end = timezone.now() + timedelta(minutes=5)
+
+    if request.method == 'POST':
+        theaters = get_object_or_404(Theater, name=theater_id, time=time_obj)
+        seats = Seat.objects.filter(theater=theaters)
+
+        if 'cancel' in request.POST:
+            print("cancel", seat_no)
+            for seat_id in int_list:
+                seat = get_object_or_404(Seat, id=seat_id, theater=theaters)
+                seat.is_booked = False
+                seat.payment = False
+                seat.save()
+
+            messages.info(request, 'Payment cancelled.')
+            return render(request, "movies/seat_selection.html", {'theater': theaters, "seats": seats, 'error': "No seat selected"})
+
+        elif 'pay' in request.POST:
+            for seat_id in int_list:
+                seat = get_object_or_404(Seat, id=seat_id, theater=theaters)
+                seat.is_booked = True
+                seat.payment = True
+                seat.save()
+                Booking.objects.create(
+                    user=request.user,
+                    seat=seat,
+                    movie=theaters.movie,
+                    theater=theaters,
+                    booked_at=timezone.now()
+                )
+
+            messages.success(request, 'Payment successful!')
+            return redirect('profile')
+
+    return render(request, 'movies/payment_method.html', {
+        'countdown_end': countdown_end,
+        'theater_id': theater_id,
+        'time': time,
+        'seat_no': seat_no
+    })
+
+@login_required(login_url='/login/')
+def cancel(request, theater_id, time, seat_no):
+    print("cancel function")
+    time_obj = datetime.strptime(time, '%d/%m/%Y %H:%M:%S')
+    print("cancel", seat_no)
+    list_of_strings = ast.literal_eval(seat_no)
+    int_list = [int(item) for item in list_of_strings]
+    theaters = get_object_or_404(Theater, name=theater_id, time=time_obj)
+    print("theaters", theaters)
+    seats = Seat.objects.filter(theater=theaters)
+    for seat_id in int_list:
+        seat = get_object_or_404(Seat, id=seat_id, theater=theaters)
+        seat.is_booked = False
+        seat.payment = False
+        seat.save()
+
+    messages.info(request, 'Payment cancelled.')
+    return render(request, "movies/seat_selection.html", {'theater': theaters, "seats": seats, 'error': "No seat selected"}) 
+
+@login_required(login_url='/login/')
+def conform(request, theater_id, time):
+    print("pay")
+
+def unique_theater_movies(request):
+    theaters = Theater.objects.all()
+    theater_data = {}
+
+    for theater in theaters:
+        if theater.name not in theater_data:
+            theater_data[theater.name] = {
+                'image': theater.movie.image.url if theater.movie.image else None,
+                'movies': {},
+                'rowspan': 0
+            }
+
+        if theater.movie.name not in theater_data[theater.name]['movies']:
+            theater_data[theater.name]['movies'][theater.movie.name] = []
+
+        if theater.time not in theater_data[theater.name]['movies'][theater.movie.name]:
+            theater_data[theater.name]['movies'][theater.movie.name].append(theater.time)
+
+        theater_data[theater.name]['rowspan'] = len(theater_data[theater.name]['movies'])
+
     return render(request, 'movies/all_theaters.html', {'theater_data': theater_data})
+
