@@ -235,7 +235,6 @@ from datetime import datetime
 from urllib.parse import unquote, quote
 from django.db import transaction
 from django.contrib import messages
-from django.utils.timezone import make_aware, make_naive, localtime
 
 def movie_list(request):
     search_query = request.GET.get('search')
@@ -250,23 +249,17 @@ def theater_list(request, name):
     theaters = Theater.objects.filter(movie=movie)
     print("theater", theaters)
     for theater in theaters:
-        if isinstance(theater.time, datetime):
-            if timezone.is_naive(theater.time):
-                aware_time = make_aware(theater.time)
-            else:
-                aware_time = theater.time
-        else:
-            # If theater.time is a string, parse it into a datetime object
+        if isinstance(theater.time, str):
             try:
-                timestamp = datetime.strptime(theater.time, '%Y-%m-%d %H:%M:%S%z')
-                aware_time = make_aware(timestamp)
+                theater.time = datetime.strptime(theater.time, '%Y-%m-%d %H:%M:%S%z')
             except ValueError:
-                timestamp = datetime.strptime(theater.time, '%Y-%m-%d %H:%M:%S')
-                aware_time = make_aware(timestamp)
+                theater.time = datetime.strptime(theater.time, '%Y-%m-%d %H:%M:%S')
 
-        local_time = localtime(aware_time)
-        formatted_timestamp = local_time.strftime('%d/%m/%Y %H:%M:%S')
-        theater.time = formatted_timestamp
+        if timezone.is_naive(theater.time):
+            theater.time = timezone.make_aware(theater.time)
+
+        local_time = timezone.localtime(theater.time)
+        theater.time = local_time.strftime('%d/%m/%Y %H:%M:%S')
 
     return render(request, 'movies/theater_list.html', {'movie': movie, 'theaters': theaters})
 
@@ -317,11 +310,10 @@ def payment_method(request, theater_id, time, seat_no):
         messages.error(request, 'Invalid time format.')
         return redirect('movies:seat_selection')
 
-    time_obj = datetime.strptime(time, '%d/%m/%Y %H:%M:%S')
     countdown_end = timezone.now() + timedelta(minutes=5)
 
     if request.method == 'POST':
-        theaters = get_object_or_404(Theater, name=theater_id, time=time_obj)
+        theaters = get_object_or_404(Theater, name=theater_id, time=timestamp)
         seats = Seat.objects.filter(theater=theaters)
 
         if 'cancel' in request.POST:
@@ -403,4 +395,3 @@ def unique_theater_movies(request):
         theater_data[theater.name]['rowspan'] = len(theater_data[theater.name]['movies'])
 
     return render(request, 'movies/all_theaters.html', {'theater_data': theater_data})
-
