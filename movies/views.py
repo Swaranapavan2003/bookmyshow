@@ -255,16 +255,19 @@ def theater_list(request, name):
                 aware_time = make_aware(theater.time)
             else:
                 aware_time = theater.time
-            local_time = localtime(aware_time)
-            formatted_timestamp = local_time.strftime('%d/%m/%Y %H:%M:%S')
         else:
             # If theater.time is a string, parse it into a datetime object
-            timestamp = datetime.strptime(theater.time, '%Y-%m-%d %H:%M:%S%z')
-            aware_time = make_aware(timestamp)
-            local_time = localtime(aware_time)
-            formatted_timestamp = local_time.strftime('%d/%m/%Y %H:%M:%S')
+            try:
+                timestamp = datetime.strptime(theater.time, '%Y-%m-%d %H:%M:%S%z')
+                aware_time = make_aware(timestamp)
+            except ValueError:
+                timestamp = datetime.strptime(theater.time, '%Y-%m-%d %H:%M:%S')
+                aware_time = make_aware(timestamp)
 
+        local_time = localtime(aware_time)
+        formatted_timestamp = local_time.strftime('%d/%m/%Y %H:%M:%S')
         theater.time = formatted_timestamp
+
     return render(request, 'movies/theater_list.html', {'movie': movie, 'theaters': theaters})
 
 @login_required(login_url='/login/')
@@ -400,5 +403,4 @@ def unique_theater_movies(request):
         theater_data[theater.name]['rowspan'] = len(theater_data[theater.name]['movies'])
 
     return render(request, 'movies/all_theaters.html', {'theater_data': theater_data})
-
 
