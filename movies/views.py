@@ -235,7 +235,7 @@ from datetime import datetime
 from urllib.parse import unquote, quote
 from django.db import transaction
 from django.contrib import messages
-from django.utils.timezone import make_naive, localtime
+from django.utils.timezone import make_aware, make_naive, localtime
 
 def movie_list(request):
     search_query = request.GET.get('search')
@@ -251,15 +251,17 @@ def theater_list(request, name):
     print("theater", theaters)
     for theater in theaters:
         if isinstance(theater.time, datetime):
-            # Convert to 'dd/mm/yyyy hh:mm:ss' format
-            naive_time = make_naive(theater.time)
-            local_time = localtime(naive_time)
+            if timezone.is_naive(theater.time):
+                aware_time = make_aware(theater.time)
+            else:
+                aware_time = theater.time
+            local_time = localtime(aware_time)
             formatted_timestamp = local_time.strftime('%d/%m/%Y %H:%M:%S')
         else:
             # If theater.time is a string, parse it into a datetime object
             timestamp = datetime.strptime(theater.time, '%Y-%m-%d %H:%M:%S%z')
-            naive_time = make_naive(timestamp)
-            local_time = localtime(naive_time)
+            aware_time = make_aware(timestamp)
+            local_time = localtime(aware_time)
             formatted_timestamp = local_time.strftime('%d/%m/%Y %H:%M:%S')
 
         theater.time = formatted_timestamp
@@ -398,4 +400,5 @@ def unique_theater_movies(request):
         theater_data[theater.name]['rowspan'] = len(theater_data[theater.name]['movies'])
 
     return render(request, 'movies/all_theaters.html', {'theater_data': theater_data})
+
 
