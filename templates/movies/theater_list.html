@@ -200,7 +200,6 @@
           <div class="time-box">
               {{ theater.time }}
               <!--{{ theater.time|date:"d/m/Y H:i:s" }}-->
-              <!--{{ theater.time|custom_date_format:"d/m/Y H:i:s" }}-->
               <a href="{% url 'book_seats' theater.name theater.time %}">
                   <span>Book Now</span>
               </a>
