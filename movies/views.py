@@ -1,4 +1,4 @@
-"""from django.shortcuts import render, redirect ,get_object_or_404
+from django.shortcuts import render, redirect ,get_object_or_404
 from .models import Movie,Theater,Seat,Booking
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
@@ -223,7 +223,9 @@ def unique_theater_movies(request):
         # Increment the rowspan for this theater based on the number of movies
         theater_data[theater.name]['rowspan'] = len(theater_data[theater.name]['movies'])
 
-    return render(request, 'movies/all_theaters.html', {'theater_data': theater_data})"""
+    return render(request, 'movies/all_theaters.html', {'theater_data': theater_data})
+
+"""
 
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Movie, Theater, Seat, Booking
@@ -395,3 +397,4 @@ def unique_theater_movies(request):
         theater_data[theater.name]['rowspan'] = len(theater_data[theater.name]['movies'])
 
     return render(request, 'movies/all_theaters.html', {'theater_data': theater_data})
+    """
